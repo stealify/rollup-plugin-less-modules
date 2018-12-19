@@ -6,30 +6,28 @@ import lessModules from './..';
 
 const temporaryPath = resolve(__dirname, '.output', 'output');
 
-test.before(t => {
-    // Performing cleanup before running tests and not after so that the output can be manually inspected afterwards
-    removeSync(temporaryPath);
+test.before(() => {
+  // Performing cleanup before running tests and not after so that the output can be manually inspected afterwards
+  removeSync(temporaryPath);
 });
 
-test('should output generated css bundle', t => {
-    const dest = resolve(temporaryPath, t._test.title.replace(/\s/g, '-'));
+test('should output generated css bundle', async t => {
+  const dest = resolve(temporaryPath, t._test.title.replace(/\s/g, '-'));
+  const inputOptions = {
+    entry: 'test/fixtures/output/index.js',
+    //output: { file: `${dest}.js`},
+    plugins: [
+      lessModules({
+        output: true
+      })
+    ]
+  };
 
-    return rollup({
-        entry: 'test/fixtures/output/index.js',
-        dest: `${dest}.js`,
-        plugins: [
-            lessModules({
-                output: true
-            })
-        ]
-    })
-
-    .then(bundle => bundle.generate({ format: 'es' }) && bundle.write({ format: 'es', dest: `${dest}.js` }))
-
-    .then(() => {
-        t.true(existsSync(`${dest}.css`));
-        t.false(existsSync(`${dest}.css.map`));
-    })
-
-    .catch(error => t.fail(`${error}`));
+  const outputOptions = { file: `${dest}.js`, format: 'es' };
+  const bundle = await rollup(inputOptions);
+  //const { code, map } = await bundle.generate(outputOptions);
+  await bundle.write(outputOptions);
+  
+  t.true(existsSync(`${dest}.js`));
+  t.false(existsSync(`${dest}.js.map`));
 });

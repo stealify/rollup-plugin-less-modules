@@ -1,15 +1,18 @@
 {
   "plugins": [
-    "external-helpers",
-    "transform-async-to-generator",
-    "transform-runtime"
-  ],
-  "presets": [
+    "@babel/plugin-external-helpers",
+    "@babel/plugin-transform-async-to-generator",
     [
-      "es2015",
+      "@babel/plugin-transform-runtime",
       {
-        "modules": false
+        "corejs": false,
+        "helpers": true,
+        "regenerator": true,
+        "useESModules": false
       }
     ]
+  ],
+  "presets": [
+    ["@babel/preset-env", { "targets": {}, "shippedProposals": true }]
   ]
 }

@@ -8,99 +8,78 @@ import lessModules from './..';
 
 const temporaryPath = resolve(__dirname, '.output', 'index');
 
-test.before(t => {
-    // Performing cleanup before running tests and not after so that the output can be manually inspected afterwards
-    removeSync(temporaryPath);
+test.before(() => {
+  // Performing cleanup before running tests and not after so that the output can be manually inspected afterwards
+  removeSync(temporaryPath);
 });
 
-test('should compile and import basic less files', t => {
-    return rollup({
-        entry: 'test/fixtures/basic/index.js',
-        plugins: [
-            lessModules()
-        ]
-    })
+test('should compile and import basic less files', async t => {
+  const bundle = await rollup({
+    input: 'test/fixtures/basic/index.js',
+    plugins: [
+      lessModules()
+    ]
+  });
     
-    .then(bundle => bundle.generate({ format: 'es' }).code)
-
-    .then(code => {
-        t.true(code.indexOf('body') >= 0);
-    })
+  const { code } = await bundle.generate({ format: 'es' });  
+  t.true(code.indexOf('body') >= 0);
     
-    .catch(error => t.fail(`${error}`));
 });
 
-test('should compile and import less files with imports', t => {
-    return rollup({
-        entry: 'test/fixtures/less-import/index.js',
-        plugins: [
-            lessModules()
-        ]
-    })
+test('should compile and import less files with imports', async t => {
+  const bundle = await rollup({
+    input: 'test/fixtures/less-import/index.js',
+    plugins: [
+      lessModules()
+    ]
+  });
 
-    .then(bundle => bundle.generate({ format: 'es' }).code)
-    
-    .then(code => {
-        t.true(code.indexOf('body') >= 0);
-    })
-    
-    .catch(error => t.fail(`${error}`));
+  const { code } = bundle.generate({ format: 'es' });
+  t.true(code.indexOf('body') >= 0);
 });
 
-test('should compile and post-process the styles', t => {
-    const options = {
-        sourceMap: {}
+test('should compile and post-process the styles', async t => {
+  const options = {
+    output: { sourcemap: {} }
+  };
+
+  function processor(tCode, id) {
+    const postCssOptions = {
+      from: id,
+      to: id,
+      map: {
+        prev: tCode.map
+      }
     };
+    return postcss([autoprefixer])
+      .process(tCode.css, postCssOptions)
+      .then(result => ({
+        css: result.css,
+        map: result.map.toString()
+      }));
+  }
 
-    const processor = function(tCode, id) {
-        const postCssOptions = {
-            from: id,
-            to: id,
-            map: {
-                prev: tCode.map
-            }
-        };
-        return postcss([autoprefixer])
-            .process(tCode.css, postCssOptions)
-            .then(result => ({
-                css: result.css,
-                map: result.map.toString()
-            }))
-    };
+  const bundle = await rollup({
+    input: 'test/fixtures/post-process/index.js',
+    plugins: [
+      lessModules({options, processor})
+    ]
+  });
 
-    return rollup({
-        entry: 'test/fixtures/post-process/index.js',
-        plugins: [
-            lessModules({options, processor})
-        ]
-    })
-
-    .then(bundle => bundle.generate({ format: 'es' }).code)
-
-    .then(code => {
-        t.true(code.indexOf('-ms-flexbox') >= 0);
-    })
-    
-    .catch(error => t.fail(`${error}`))
+  const { code } = bundle.generate({ format: 'es' });  
+  t.true(code.indexOf('-ms-flexbox') >= 0);
 });
 
-test('should clean and minify the compiled CSS content', t => {
-    const lessOptions = {};
+test('should clean and minify the compiled CSS content', async t => {
+  const bundle = await rollup({
+    input: 'test/fixtures/minify/index.js',
+    plugins: [
+      lessModules({
+        minify: true
+      })
+    ]
+  });
 
-    return rollup({
-        entry: 'test/fixtures/minify/index.js',
-        plugins: [
-            lessModules({
-                minify: true
-            })
-        ]
-    })
-
-    .then(bundle => bundle.generate({ format: 'es' }).code)
-
-    .then(code => {
-        t.true(code.indexOf('body{margin:0}') > 0)
-    })
-
-    .catch(error => t.fail(`${error}`))
+  const {code} = await bundle.generate({ format: 'es' });  
+  t.true(code.indexOf('body{margin:0}') > 0);
 });
